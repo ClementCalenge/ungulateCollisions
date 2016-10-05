@@ -1,0 +1,14 @@
+Package: ungulateCollisions
+Type: Package
+Title: Identifying the Factors Affecting Wildlife-Ungulate Collisions
+Version: 1.0
+Date: 2016-10-05
+Author: Clement Calenge <clement.calenge@oncfs.gouv.fr>
+Maintainer: Clement Calenge <clement.calenge@oncfs.gouv.fr>
+SystemRequirements: JAGS 4.x.y
+Depends: R (>= 3.0.1), rjags, coda
+Suggests: knitr, ade4
+Description: this package contains the code used in the paper of Saint-Andrieux et al., describing which environmental factors affect the collisions between ungulates and vehicles.
+LazyData: true
+License: GPL (>=2)
+
