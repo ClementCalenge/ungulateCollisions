@@ -1,0 +1,601 @@
+\documentclass[a4paper]{article}
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{modelfit: Example of fit of a model predicting the collisions between the red deer and vehicles in nine French departements}
+%\VignetteDepends{knitr,ade4,rjags}
+\usepackage{graphicx}
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage{url}
+\usepackage{amsfonts}
+\usepackage{pdfcolmk}
+\usepackage{epsfig}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue,citecolor=blue]{hyperref}
+\usepackage{natbib}
+\usepackage{ucs}
+\usepackage{savesym}
+\savesymbol{iint}
+\savesymbol{iiint}
+\usepackage{amsmath}
+\usepackage{rotating}
+\usepackage{appendix}
+\usepackage[utf8]{inputenc}
+\newlength{\defaultparindent}
+\setlength{\defaultparindent}{\parindent}
+\newenvironment{Default Paragraph Font}{}{}
+\newcommand{\INT}[1]{\stackrel{\circ}{#1}}
+\topmargin -1.5cm
+\headheight 0.5cm
+\headsep 1.0cm
+\topskip 0.5cm
+\textheight 24.5cm
+\footskip 1.0cm
+\oddsidemargin 0.0cm
+\evensidemargin 0.0cm
+\textwidth 16cm
+\parskip 0.2cm
+\parindent 1.0cm
+\baselineskip 0.2cm
+
+
+
+\title{ Example of fit of a model predicting the collisions between the red deer and vehicles in nine French departements }
+\author{Clement Calenge,\\
+  Office national de la classe et de la faune
+  sauvage\\
+  Saint Benoist -- 78610 Auffargis -- France.}
+\date{October 2016}
+
+\setlength{\parindent}{0cm}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+<<setup, include=FALSE, cache=FALSE>>=
+# set global chunk options
+library('knitr')
+opts_chunk$set(fig.path="modelfit-",
+               fig.align="center",
+               fig.show="hold",
+               echo=TRUE,
+               results="markup",
+               fig.width=10,
+               fig.height=10, out.width='\\linewidth',
+               out.height='\\linewidth',
+               cache=FALSE,
+               dev='png',
+               concordance=TRUE,
+               error=FALSE)
+opts_knit$set(aliases = c(h = 'fig.height',
+              w = 'fig.width',
+              wo='out.width',
+              ho='out.height'))
+options(replace.assign=TRUE,width=60)
+set.seed(9567)
+@
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%                                                            %%%%
+%%%%                  The vignette starts here                  %%%%
+%%%%                                                            %%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+
+\section{Introduction}
+
+In this vignette, we illustrate the code used by Saint Andrieux et
+al. (in prep.) to fit the models predicting the number of collisions
+between three ungulates species and vehicles in nine French
+departements. We take the example of the red deer here, but the code
+is exactly the same for
+the other species.\\
+
+First we load the package \texttt{ungulateCollisions} (the dataset
+\texttt{dataCollision} containing the complete data is automatically
+loaded with the package):
+
+<<load-package-and-dataset>>=
+library(ungulateCollisions)
+@
+
+The structure of the dataset can be displayed with:
+
+<<structure-dataset>>=
+str(dataCollision)
+@
+
+This dataset is a list containing three elements, corresponding to the
+three focus species \texttt{RedDeer, RoeDeer, WildBoar}. Each element
+is itself a list and contains the following elements:\\
+
+\begin{itemize}
+\item \texttt{X}: a data.frame containing the variables describing the
+  management units, and supposed to have an effect on the collisions
+  between ungulates and vehicles:
+  \begin{itemize}
+  \item \texttt{forFrag}: forest fragmentation
+  \item \texttt{urbFrag}: urban fragmentation
+  \item \texttt{locr}: density of local roads
+  \item \texttt{regr}: density of regional roads
+  \item \texttt{natr}: density of national roads
+  \item \texttt{motr}: density of motorways
+  \item \texttt{elev600,elev600\_1500,elev1500}: percentage of the
+    management unit covered by areas with elevation respectively lower
+    than 600 m asl, comprised between 600 m and 1500 m asl, and
+    greater than 1500 m asl
+  \item \texttt{sinus}: average sinuosity of the roads in the
+    management unit
+  \item \texttt{hunt}: the hunting bag
+  \item \texttt{Agriculture,Open,Urban,Forest}: proportion of the
+    management unit covered by these habitat types.\\
+  \end{itemize}
+\item \texttt{coll}: the number of collisions between individuals of
+  the species and vehicles in the management unit during the study
+  period;\\
+
+\item \texttt{Y}: the number of years during which the collisions with
+  the species have been recorded in the management units;\\
+
+\item \texttt{Area}: the area of the management units;\\
+
+\item \texttt{departement}: the departement to which each management
+  unit belongs.\\
+\end{itemize}
+
+In the following sections, we will reproduce the modelling approach
+described in Saint-Andrieux et al. (in prep.)
+
+
+\section{Bayesian variable selection}
+
+\subsection{Description of the model}
+
+We first describe how we implemented the Bayesian variable selection
+approach. Let us recall the structure of this model here. For a given
+species, let $N_i$ be the number of collisions with a vehicle in the
+management unit $i$. We assumed that this variable could be described
+by the following over-dispersed Poisson distribution:
+\begin{eqnarray*}
+  N_i & \sim & \mathcal{P}(\epsilon_i\times \lambda_i \times Y_i
+               \times S_i) \\
+  \log \epsilon_i & \sim & \mathcal{N}(0,\sigma)
+\end{eqnarray*}
+where $Y_i$ is the number of years of data available in the management
+unit $i$, $S_i$ is the area of the management unit $i$, $\lambda_i$ is
+the average number of collisions per unit area and per year expected
+under our model (see below) and $\epsilon_i$ is a normal
+over-dispersion residual with zero mean and standard deviation equals
+to $\sigma$.\\
+
+The average number of collisions per unit area and per year in a
+management unit $i$ was modeled as a function of the $P$ variables
+contained in the data.frame \texttt{X} stored in each component of the
+dataset \texttt{dataCollision} (see previous section), according to the
+following log-linear model:
+\begin{eqnarray*}
+  \log \lambda_i & = & \beta_0 + \sum_{j=1}^P \alpha_j \times \beta_j
+                       \times X_{ij} + \eta_{d(i)} \\
+  \eta_{d(i)} & \sim & \mathcal{N}(0,\sigma_d)
+\end{eqnarray*}
+where $X_{ij}$ is the value of the $j$th variable describing the
+management unit $i$, $\eta_d$ is a random effect describing the effect
+of the department $d$, $d(i)$ is the department corresponding to the
+management unit $i$, and $\alpha_j$ and $\beta_j$ are two coefficients
+characterizing the role of the $j$th variable in this linear
+combination: (i) the coefficient $\alpha_j$ can only take values 0 and
+1. When this coefficient is equal to 1, the $j$th variable belongs to
+the model; when this coefficient is equal to 0, the $j$th variable
+does not belong to the model. In a Bayesian context, the value of this
+coefficient is therefore considered as the realization of a Bernoulli
+variable characterized by a probability $p_j$, which is the
+probability that this variable belongs to the model; (ii) the
+coefficient $\beta_j$ can take any real value, and determines the
+importance of the $j$th variable on the average number of collisions
+when this variable belongs to the model, as in a classical regression
+model. This approach consists in separating the presence of a variable
+in a model from its importance, and then to estimate the probability
+of presence of each variable in the model from the data, as suggested
+by Kuo and Mallik (1998).\\
+
+We set the following vague priors on the coefficients of the model:
+\begin{eqnarray*}
+  \beta_0 & \sim & \mathcal{N}(0,100)\\
+  \beta_j & \sim & \mathcal{N}(0,100)\\
+  \alpha_j & \sim & \mathcal{B}(0.5)\\
+  \sigma & \sim & \mathcal{G}(0.01,0.01)\\
+  \sigma_d & \sim & \mathcal{G}(0.01,0.01)
+\end{eqnarray*}
+where $\mathcal{B}$ stands for Bernoulli, and $\mathcal{G}$ stands for
+Gamma.
+
+
+\subsection{Preparation of the data}
+
+We then prepare the data for the fit. First, we extract the data.frame
+containing the explanatory variables in an object named \texttt{X}:
+
+<<extract-X>>=
+X <- dataCollision$RedDeer$X
+@
+
+Then, note that the three variables describing the elevation are
+redundant: a given point in a management unit is necessarily either
+$<$600 m a.s.l., with an elevation comprised between 600 and 1500 m
+a.s.l., or $>1500$ m a.s.l. Thus, we know that if the elevation of a
+point is neither $>$1500 m, nor between 600 m and 1500 m, then it is
+necessarily $<600$ m. We therefore set the variable \texttt{elev600}
+to NULL, to avoid this redundancy:
+
+<<elev-2-var>>=
+X$elev600 <- NULL
+@
+% $
+
+We will use the function \texttt{prepareFit} from the package
+\texttt{ungulateCollisions} to fit the model. Let us look at the
+arguments of this function:
+
+
+<<args-prepareFit>>=
+args(prepareFit)
+@
+
+The argument names are pretty clear (otherwise, see the help page of
+this function). Only the argument \texttt{alphas} requires an
+explanation. This argument is a character string vector with length
+equal to \texttt{ncol(X)}. It gives the name, for each variable in the
+model (included in the data.frame \texttt{X} created above), of the
+group of variables to which each column of \texttt{X} belongs. This
+vector is used to describe how to group the variables so that they are
+either in the model or out of the model together.  Thus, for most
+columns of \texttt{X}, \texttt{alphas[i]} will be set equal to
+\texttt{names(X)[i]}, except for the two elevation variables (for
+which \texttt{alphas[i]} will be set to \texttt{"elev"}) and the
+four habitat variables (for which \texttt{alphas[i]} will be set to
+\texttt{"hab"}). We create this vector below:
+
+
+<<creation-alphas>>=
+## Names of variables
+names(X)
+
+## Creation of alphas: equal to names(X)
+## for most variables...
+alphas <- names(X)
+
+## ... except for elevation and habitat,
+## which correspond to several variables in X
+alphas[7:8] <- "elev"
+alphas[11:14] <- "hab"
+@
+
+Note that the habitat variables may be strongly correlated together:
+
+<<cor-habitat>>=
+cor(X[,11:14])
+@
+
+In particular, the agricultural cover is inversely correlated with the
+forest habitat (the more agricultural habitat there is in a management
+unit, and the less forested habitat there is). The presence of
+correlation between explanatory variables can pose a problem to the
+Gibbs sampler used to fit the model (e.g. Gilks and Robert 1996). To
+avoid these correlations, we first rotate the space defined by these
+four habitat variables using a principal component analysis (which
+consists in finding new, uncorrelated variables in the space defined
+by these four habitat variables):
+
+<<pca-uncorrelated>>=
+## We extract the habitat variables in a table hab
+hab <- X[,11:14]
+
+## We delete these columns from the table X
+X <- X[,-c(11:14)]
+
+## We perform a PCA using dudi.pca from the package ade4
+pc <- ade4::dudi.pca(hab,scannf = FALSE, nf=4)
+
+## The row coordinates are uncorrelated
+## this data.frame will be included in the table X
+li1 <- pc$l1
+
+## But we first have another transformation to apply:
+@
+
+
+Before storing these new, uncorrelated variable describing the habitat
+in the table \texttt{X}, we first standardize the rest of the table
+\texttt{X}, i.e. we transform it so that each column is characterized
+by a mean equal to zero and a standard deviation equal to 1. This is a
+required step to improve the mixing of the Gibbs sampler (Gilks and
+Roberts 1996):
+
+<<scale-vars>>=
+X <- as.data.frame(scale(X))
+@
+
+And we finally bind the uncorrelated principal components to this
+table:
+
+
+<<add-uncorrelated-components>>=
+X$AX1 <- li1[,1]
+X$AX2 <- li1[,2]
+X$AX3 <- li1[,3]
+X$AX4 <- li1[,4]
+@
+
+
+\subsection{Model fit}
+
+Finally we structure our data for the fit of the model with the JAGS
+software. We will use the package \texttt{rjags} to fit this
+model. As explained in the previous section, we use the function
+\texttt{prepareFit}:
+
+<<use-of-prepareFit>>=
+pf <- prepareFit(X, alphas, dataCollision$RedDeer$coll,
+                 dataCollision$RedDeer$Y, dataCollision$RedDeer$Area,
+                 dataCollision$RedDeer$departement)
+
+str(pf,1,nchar.max=20)
+@
+
+The list \texttt{pf} contains all the elements required for the
+fit. Thus, the code for the JAGS model is stored in the element
+\texttt{modelstring} of this list (use \texttt{cat(pf\$modelstring)}
+if you want to see this code), the starting values are stored in the
+element \texttt{ini}, and the data required for the fit are stored in
+the list \texttt{data4jags}. The name of the coefficients to be
+monitored is stored in the component \texttt{coefnames}. It is then
+possible to fit the model with JAGS using the following code. WARNING:
+the execution of this code is very long (about one hour)!! We have
+stored the results of this computation in the dataset
+\texttt{modelRedDeer} to allow the reader to avoid this execution
+(i.e. no need to execute the following code, the dataset
+\texttt{modelRedDeer} is automatically loaded with the package
+\texttt{ungulateCollisions}):
+
+<<modelKM-fit, eval=FALSE>>=
+mo <- jags.model(textConnection(pf$modelstring), ini=pf$ini, data=pf$data4jags)
+update(mo, n.iter=1000)
+modelRedDeer <- coda.samples(mo, variable.names = pf$coefnames,
+                             n.iter = 500000, thin=100)
+@
+
+The reader can have an idea of the quality of the mixing properties
+for the parameters alpha by typing:
+
+<<mixing-km>>=
+par(mfrow=c(4,3))
+traceplot(modelRedDeer[[1]][,grep("alpha", colnames(modelRedDeer[[1]]))])
+@
+
+The mixing properties were satisfying (i.e. the chain switches
+frequently from 0 to 1, when the probability $p_j$ is neither 0 nor
+1).
+
+
+\subsection{Results}
+
+We can use the function \texttt{probabilityKM} to calculate the
+probability that each variable is included in the true model, as well
+as the probability that each model (i.e. each combination of
+variables) is the true model:
+
+<<probakm>>=
+probabilityKM(modelRedDeer)
+@
+
+The results here are approximately identical to those presented by
+Saint-Andrieux et al. They are not exactly the same, as these results
+are calculated from Monte Carlo simulations (i.e. random draws from
+the posterior distribution, which can vary slightly between two
+different executions).\\
+
+Thus, the best model has slightly more than one chance out of two to
+include the forest fragmentation and the hunting bag (as noted by
+Saint-Andrieux et al.).
+
+\section{Final model}
+
+\subsection{Model fit}
+
+We therefore fitted the final model to the data, i.e. the following
+Bayesian model:
+
+\begin{eqnarray}
+  \log \lambda_i & = & \beta_0 + \sum_{j\in B}  \beta_j
+                       \times X_{ij} + \eta_{d(i)} \label{eq:eq1} \\
+  \eta_{d(i)} & \sim & \mathcal{N}(0,\sigma_d) \nonumber
+\end{eqnarray}
+Where $B$ is the set of variables identified by the Kuo and Mallik's
+approach (i.e. including only \texttt{hunt} and \texttt{forFrag}). We
+use the function \texttt{finalModel} (see the help page of this
+function for more information about its arguments) to prepare the data
+for this fit:
+
+<<prepare-fit-finalModel>>=
+pfm <- finalModel(X, c("forFrag","hunt"), dataCollision$RedDeer$coll,
+                  dataCollision$RedDeer$Y, dataCollision$RedDeer$Area,
+                  dataCollision$RedDeer$departement)
+@
+
+Finally, we can fit the model with JAGS. Again, the execution of this
+code can be long, so we stored the results in the dataset
+\texttt{finalModelRedDeer}, so that the reader does not necessarily
+need to execute the following code (the dataset
+\texttt{finalModelRedDeer} is automatically loaded with the package
+\texttt{ungulateCollisions}):
+
+<<fit-finalModel, eval=FALSE>>=
+mo <- jags.model(textConnection(pfm$modelstring), ini=pfm$ini, data=pfm$data4jags)
+update(mo, n.iter=1000)
+finalModelRedDeer <- coda.samples(mo, variable.names = pfm$coefnames,
+                                  n.iter = 500000, thin=100)
+@
+
+Again, we can have a look at the mixing properties of this model:
+
+<<mixing-final-model>>=
+par(mfrow = c(3,2))
+traceplot(finalModelRedDeer)
+@
+
+These properties were satisfying. Note that the diagnostic of Raftery
+and Lewis (1992) confirm this observation
+
+<<raftery-diag>>=
+raftery.diag(finalModelRedDeer)
+@
+
+The required number of iterations $N$ were lower than 500000 (the
+actual number of iterations) for all parameters. Note however that
+there is a strong dependency between successive values of the Markov
+chain.\\
+
+We now look at the goodness of fit of this model. As indicated by
+Saint-Andrieux et al., We then examined the fit of the model using the
+approach recommended by Gelman and Meng (1996). For every iteration of
+the MCMC, we simulated a hypothetical replication of the dataset using
+equation \ref{eq:eq1}, i.e. we simulated a number of collisions in
+each management unit. We then compared the observed number of
+collisions with the statistical distribution of simulated numbers of
+collisions. We compute these simulated distribution below:
+
+<<simus-GOF, eval=FALSE>>=
+## the MCMC iterations:
+cf <- as.data.frame(finalModelRedDeer[[1]])
+rp <- list()
+## For each MCMC iteration
+for (r in 1:nrow(cf)) {
+    ## progress bar
+    cat(round(100*r/nrow(cf)), "\r")
+    departement <- as.numeric(factor(dataCollision$RedDeer$departement))
+    ## get the parameters relative to departement random effects
+    sigefa <- cf$sigefa[r]
+    muefa <- cf$muefa[r]
+    efal <- rnorm(7, muefa, 1/sqrt(sigefa))
+    efal <- efal[departement]
+    ## overdispersion residuals
+    sigeps <- cf$sigeps[r]
+    resid <- rnorm(length(departement),0,1/sqrt(sigeps))
+    ## And formula
+    ev <- dataCollision$RedDeer$Y*
+        dataCollision$RedDeer$Area*
+            exp(efal+resid+
+                    cf$beta_forFrag[r]*X$forFrag+
+                        cf$beta_hunt[r]*X$hunt)
+
+    ## Simulation of the number of collisions
+    rp[[r]] <- rpois(length(ev), ev)
+}
+SimuGOF <- do.call("cbind",rp)
+@
+
+We calculated the proportion of the 90\% credible intervals that
+contained the observed number of collisions:
+
+<<cover-proba-90-IC>>=
+aa <- apply(SimuGOF, 1, quantile, c(0.05,0.95))
+sum(dataCollision$RedDeer$coll>=aa[1,]&
+        dataCollision$RedDeer$coll<=aa[2,])/
+    length(dataCollision$RedDeer$coll)
+@
+
+This indicates that the fit of our model was correct for the the red
+deer. We could therefore validate this model.
+
+
+\subsection{Graphical display}
+
+Finally, we represented graphically the relationship between the
+number of collisions, the hunting bag and the forest fragmentation:
+
+<<plot-model>>=
+cf <- as.data.frame(finalModelRedDeer[[1]])
+
+## Explanatory variables for this model
+re <- seq(0,280, length=20)
+reo <- (re-mean(dataCollision$RedDeer$X$hunt))/
+    sd(dataCollision$RedDeer$X$hunt)
+ra <- c(c(-1, 0, 1)-mean(dataCollision$RedDeer$X$forFrag))/
+    sd(dataCollision$RedDeer$X$forFrag)
+
+## For each MCMC iteration, calculation of the average density of collision
+lir <- list()
+for(r in 1:nrow(cf)) {
+    vr1 <- exp(cf$muefa[r]+cf$beta_hunt[r]*reo + cf$beta_forFrag[r]*ra[1])
+    vr2 <- exp(cf$muefa[r]+cf$beta_hunt[r]*reo + cf$beta_forFrag[r]*ra[2])
+    vr3 <- exp(cf$muefa[r]+cf$beta_hunt[r]*reo + cf$beta_forFrag[r]*ra[3])
+    lir[[r]] <- data.frame(vr1, vr2, vr3)
+}
+
+## We represent the credible intervals at various levels
+## (10%, 20%, ..., 80%, 90%)
+par(mfrow=c(3,1),bg="white")
+for (i in 1:3) {
+    df <- do.call("cbind",lapply(lir, function(x) x[,i]))
+    qu <- (apply(df, 1, quantile, seq(0,1,by=0.1)))
+    plot(re, qu[1,], ty="n", ylim = c(0.0001,4),
+         xlim=c(100,280), ylab = "Average density of collisions",
+         main=paste(c("Low","Medium","High")[i],
+         "Fragmentation of forests"),
+         xlab="Hunting bag")
+    for(j in 2:5) {
+        polygon(c(re,rev(re)),
+                c(qu[j,], rev(qu[nrow(qu)-j+1,])), col=
+                    grey((6-j)/6), border=NA)
+    }
+    lines(re, qu[6,], lwd=3, col="white")
+    lines(re, qu[6,], lwd=2, col="black")
+    if (i==1)
+        legend(0, 15,
+               paste(100-2*seq(10,40, by=10),
+                     "%", sep=""),
+               fill=grey((6-(2:5))/6))
+}
+@
+
+The four shades of grey indicate (from darker to lighter shades):
+20\%, 40\%, 60\% and 80\% credible intervals.\\
+
+Models for other species can be fitted in a similar way.
+
+
+\section{References}
+
+\begin{itemize}
+\item Gelman, A. and Meng, X. (1996)  Model checking and model
+  improvement. In Gilks, W. and Richardson, S. (Eds.)  1996.
+  Markov chain Monte Carlo in practice. Chapman and Hall/CRC,
+  189-201.\\
+
+\item Gilks, W. and Roberts, G. (1996)  Strategies for improving
+  MCMC. In Gilks, W. and Richardson, S. (Eds.)
+  1996. Markov Chain Monte Carlo in practice. Chapman and Hall/CRC,
+  89-114.\\
+
+\item Kuo, L. and Mallik, B. (1998) Variable selection for regression
+  models. Sankhya: The Indian Journal of Statistics, Series B, 60,
+  65-81.\\
+
+\item Raftery, A. and Lewis, S. (1992). Practical markov chain monte
+  carlo: comment: one long run with diagnostics: implementation
+  strategies for Markov Chain Monte Carlo. Statistical Science, 7,
+  493-497.\\
+
+\item Saint Andrieux, C., Calenge, C. and Bonenfant, C. (in prep).
+  Comparison of ecological, biological and anthropogenic causes of
+  vehicle-wildlife collisions among three large mammalian species.\\
+\end{itemize}
+
+\end{document}

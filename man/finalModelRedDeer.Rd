@@ -18,11 +18,6 @@ function of the forest fragmentation and hunting bag. The fit was
 performed using the package rjags. See the examples of the function
 \code{finalModel} to see how this dataset was generated.
 }
-\references{
-Kuo, L. and Mallik, B. 1998.Variable selection for
-regression models. Sankhya: The Indian Journal of Statistics,
-Series B, 60, 65-81.
-}
 \seealso{
 \code{\link{finalModel}}
 }

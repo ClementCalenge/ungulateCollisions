@@ -87,6 +87,34 @@ NULL
 
 
 
+#' @title Goodness of Fit of the Final Model of the Factors Affecting Ungulate-Vehicle Collisions
+#'
+#' @details Dataset containing the results of the simulations carried
+#' out to test the goodness of fit of the model
+#' \code{finalmodelRedDeer}, fitted to predict the red deer-vehicl
+#' collisions as a function of the forest fragmentation and hunting
+#' bag. We used the Gelman and Meng (1996) approach: for each MCMC
+#' iteration, we simulated a dataset (i.e. a vector of number of
+#' collisions in each management unit) with the simulated vector. This
+#' dataset is a matrix containing these 5000 vectors binded by
+#' columns.
+#'
+#'
+#' @format A matrix.
+#'
+#' @seealso \code{\link{finalModelRedDeer}}, which was used to
+#' simulate this dataset (see also the vignette that describes how
+#' this dataset was generated).
+#'
+#' @references Gelman, A. and Meng, X. (1996).  Model checking and
+#' model improvement, Chapter 11 in Gilks, W. & Richardson, S. (Eds.)
+#' 1996.  Markov chain Monte Carlo in practice ,Chapman & Hall/CRC,
+#' 189-201.
+#'
+"SimuGOF"
+
+
+
 #' @title Final Model of the Factors Affecting Ungulate-Vehicle Collisions
 #'
 #' @details Dataset containing the results of the MCMC fit of the
@@ -99,10 +127,6 @@ NULL
 #' @format An object of class \code{mcmc.list}
 #'
 #' @seealso \code{\link{finalModel}}
-#'
-#' @references Kuo, L. and Mallik, B. 1998.Variable selection for
-#' regression models. Sankhya: The Indian Journal of Statistics,
-#' Series B, 60, 65-81.
 #'
 "finalModelRedDeer"
 
