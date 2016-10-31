@@ -111,33 +111,6 @@ The structure of the dataset can be displayed with:
 
 <<structure-dataset>>=
 str(dataCollision)
-
-## Ajout de bruit aux données
-set.seed(20989)
-for (i in 1:3) {
-    ssd <- apply(dataCollision$RedDeer$X,2,sd)/10
-    co <- c(1,2,7:9,11:15)
-    for (j in co) {
-        dataCollision[[i]]$X[,j] <- dataCollision[[i]]$X[,j]+
-            rnorm(nrow(dataCollision[[i]]$X),0,ssd[j])
-    }
-    el <- dataCollision[[i]]$X[,c(7:9)]
-    el[el<0] <- 0
-    su <- apply(el,1,sum)
-    el <- apply(el,2,function(x) x/su)
-    el <- round(100*el)
-    dataCollision[[i]]$X[,c(7:9)] <- el
-
-    ha <- dataCollision[[i]]$X[,c(12:15)]
-    ha[ha<0] <- 0
-    ha[ha>1] <- 1
-    ha[apply(ha,1,sum)>1,] <- apply(ha[apply(ha,1,sum)>1,],2,function(x) x/apply(ha[apply(ha,1,sum)>1,],1,sum))
-    dataCollision[[i]]$X[,c(12:15)] <- ha
-    dataCollision[[i]]$Area <- dataCollision[[i]]$Area*exp(rnorm(length(dataCollision[[i]]$Area),mean=0, sd=0.001))
-    dataCollision[[i]]$Y <- round(rnorm(length(dataCollision[[i]]$Y), mean=dataCollision[[i]]$Y, sd=sqrt(dataCollision[[i]]$Y)/5))
-}
-
-
 @
 
 This dataset is a list containing three elements, corresponding to the
