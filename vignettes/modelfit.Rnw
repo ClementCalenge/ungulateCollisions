@@ -95,8 +95,9 @@ In this vignette, we illustrate the code used by Saint Andrieux et
 al. (in prep.) to fit the models predicting the number of collisions
 between three ungulates species and vehicles in nine French
 departements. We take the example of the red deer here, but the code
-is exactly the same for
-the other species.\\
+is exactly the same for the other species. Note that, to preserve
+copyright on the data, we added a small amount of noise to the data
+(though we took care to preserve the main structures in the data).\\
 
 First we load the package \texttt{ungulateCollisions} (the dataset
 \texttt{dataCollision} containing the complete data is automatically
@@ -110,6 +111,33 @@ The structure of the dataset can be displayed with:
 
 <<structure-dataset>>=
 str(dataCollision)
+
+## Ajout de bruit aux données
+set.seed(20989)
+for (i in 1:3) {
+    ssd <- apply(dataCollision$RedDeer$X,2,sd)/10
+    co <- c(1,2,7:9,11:15)
+    for (j in co) {
+        dataCollision[[i]]$X[,j] <- dataCollision[[i]]$X[,j]+
+            rnorm(nrow(dataCollision[[i]]$X),0,ssd[j])
+    }
+    el <- dataCollision[[i]]$X[,c(7:9)]
+    el[el<0] <- 0
+    su <- apply(el,1,sum)
+    el <- apply(el,2,function(x) x/su)
+    el <- round(100*el)
+    dataCollision[[i]]$X[,c(7:9)] <- el
+
+    ha <- dataCollision[[i]]$X[,c(12:15)]
+    ha[ha<0] <- 0
+    ha[ha>1] <- 1
+    ha[apply(ha,1,sum)>1,] <- apply(ha[apply(ha,1,sum)>1,],2,function(x) x/apply(ha[apply(ha,1,sum)>1,],1,sum))
+    dataCollision[[i]]$X[,c(12:15)] <- ha
+    dataCollision[[i]]$Area <- dataCollision[[i]]$Area*exp(rnorm(length(dataCollision[[i]]$Area),mean=0, sd=0.001))
+    dataCollision[[i]]$Y <- round(rnorm(length(dataCollision[[i]]$Y), mean=dataCollision[[i]]$Y, sd=sqrt(dataCollision[[i]]$Y)/5))
+}
+
+
 @
 
 This dataset is a list containing three elements, corresponding to the
@@ -396,14 +424,12 @@ probabilityKM(modelRedDeer)
 @
 
 The results here are approximately identical to those presented by
-Saint-Andrieux et al. They are not exactly the same, as these results
-are calculated from Monte Carlo simulations (i.e. random draws from
-the posterior distribution, which can vary slightly between two
-different executions).\\
+Saint-Andrieux et al. They are not exactly the same, as we added some
+noise to the data.\\
 
-Thus, the best model has slightly more than one chance out of two to
-include the forest fragmentation and the hunting bag (as noted by
-Saint-Andrieux et al.).
+Thus, the best model has about one chance out of two to include the
+forest fragmentation and the hunting bag (as noted by Saint-Andrieux
+et al.).
 
 \section{Final model}
 
