@@ -1,8 +1,8 @@
 Package: ungulateCollisions
 Type: Package
-Title: Identifying the Factors Affecting Wildlife-Ungulate Collisions
+Title: Identifying the Factors Affecting Car-Ungulate Collisions
 Version: 1.0
-Date: 2016-10-05
+Date: 2018-02-14
 Author: Clement Calenge <clement.calenge@oncfs.gouv.fr>
 Maintainer: Clement Calenge <clement.calenge@oncfs.gouv.fr>
 SystemRequirements: JAGS 4.x.y

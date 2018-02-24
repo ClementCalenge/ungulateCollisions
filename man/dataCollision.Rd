@@ -24,7 +24,8 @@ areas with elevation comprised between 600 m and 1500 m asl, (ix)
 with elevation greater than 1500 m asl, (x) \code{sinus}: average
 sinuosity of the roads in the management unit, (xi) \code{hunt}:
 the hunting bag, (xii) \code{Agriculture,Open,Urban,Forest}:
-proportion of the management unit covered by these habitat types.}
+proportion of the management unit covered by these habitat types, (xiii) 
+\code{roads}: density of all types of roads in the management units.}
 
 \item{coll}{the number of collisions recorded in each management
 unit}
