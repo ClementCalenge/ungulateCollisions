@@ -71,6 +71,10 @@ X <- dataCollision$RedDeer$X
 ## it is necessarily < 600
 X$elev600 <- NULL
 
+## Set the variable roads to NULL (not useful here, as noted in the
+## paper)
+X$roads <- NULL
+
 ## prepares the alpha:
 ## vector alphas: the name of alphas is the same as the columns of X...
 alphas <- names(X)
